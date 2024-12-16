@@ -5,20 +5,20 @@ from layers import MultiHeadAttention, FeedForward
 
 
 class TransformerBlock(nn.Module):
-    def __init__(self, embeddings_dimension: int, context_length: int, num_heads: int, bias: bool, dropout: float, scaling_factor: int, *kwargs):
+    def __init__(self, embedding_dimension: int, context_length: int, num_heads: int, bias: bool, dropout: float, scaling_factor: int, *kwargs):
         super().__init__()
 
-        self.embeddings_dimension = embeddings_dimension
+        self.embedding_dimension = embedding_dimension
         self.context_length = context_length
         self.num_heads = num_heads
         self.bias = bias
         self.dropout = dropout
         self.scaling_factor = scaling_factor
 
-        self.mha = MultiHeadAttention(self.embeddings_dimension, self.embeddings_dimension, self.num_heads, self.context_length)
-        self.ff = FeedForward(self.embeddings_dimension, self.scaling_factor, self.bias)
-        self.norm1 = nn.LayerNorm(self.embeddings_dimension, eps = 1e-5)
-        self.norm2 = nn.LayerNorm(self.embeddings_dimension, eps = 1e-5)
+        self.mha = MultiHeadAttention(self.embedding_dimension, self.embedding_dimension, self.num_heads, self.context_length)
+        self.ff = FeedForward(self.embedding_dimension, self.scaling_factor, self.bias)
+        self.norm1 = nn.LayerNorm(self.embedding_dimension, eps = 1e-5)
+        self.norm2 = nn.LayerNorm(self.embedding_dimension, eps = 1e-5)
         self.dropout = nn.Dropout(self.dropout)
     
     def forward(self, x: torch.Tensor) -> torch.Tensor:

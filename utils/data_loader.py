@@ -18,7 +18,7 @@ def get_line_offsets(path: str, chunk_size: int = 2 ** 20) -> List[int]:
     return offsets
 
 class TamilDataset(Dataset):
-    def __init__(self, path: str, offset_dict: List[int], tokenizer: spm.SentencePieceProcessor, max_length: int, stride: int):
+    def __init__(self, path: str, offset_dict: List[int], tokenizer: spm.SentencePieceProcessor, max_length: int, stride: int, debug: bool = False):
         """
         PyTorch Dataset for tokenized Tamil text.
 
@@ -34,6 +34,7 @@ class TamilDataset(Dataset):
         self.tokenizer = tokenizer
         self.max_length = max_length
         self.stride = stride
+        self.debug = debug
 
     def __len__(self) -> int:
         return len(self.offset_dict)
@@ -60,7 +61,9 @@ class TamilDataset(Dataset):
             input_chunks.append(torch.tensor(input_chunk, dtype=torch.long))
             target_chunks.append(torch.tensor(target_chunk, dtype=torch.long))
 
-        return line, input_chunks, target_chunks
+        if self.debug:
+            return line, input_chunks, target_chunks
+        return input_chunks, target_chunks
 
 
 def create_dataloader(path, batch_size=4, max_length=256,
@@ -68,9 +71,21 @@ def create_dataloader(path, batch_size=4, max_length=256,
     tokenizer = spm.SentencePieceProcessor()
     tokenizer.load('models/tok32000.model')
 
-    dataset = TamilDataset(path, tokenizer, max_length, stride)
+    offsets = get_line_offsets(path)
+
+    dataset = TamilDataset(path, offsets, tokenizer, max_length, stride, debug = False)
     dataloader = DataLoader(
         dataset, batch_size=batch_size, shuffle=shuffle, drop_last=drop_last, num_workers=num_workers)
 
     return dataloader
+
+
+if __name__ == '__main__':
+    dataloader = create_dataloader(
+    'data/ta_dedup.txt', batch_size=1, max_length=256, stride=1, shuffle=False
+    )
+
+    data_iter = iter(dataloader)
+    first_batch = next(data_iter)
+    print(first_batch[0][0].shape, first_batch[0][1].shape)
 

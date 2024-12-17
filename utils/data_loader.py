@@ -2,6 +2,7 @@ import torch
 from torch.utils.data import Dataset, DataLoader
 from typing import List
 import sentencepiece as spm
+import multiprocessing
 
 def get_line_offsets(path: str, chunk_size: int = 2 ** 20) -> List[int]:
     """
@@ -66,8 +67,7 @@ class TamilDataset(Dataset):
         return input_chunks, target_chunks
 
 
-def create_dataloader(path, batch_size=4, max_length=256,
-                         stride=128, shuffle=True, drop_last=True, num_workers=0):
+def create_dataloader(path: str, batch_size: int, max_length: int, stride: int, shuffle: bool, drop_last: bool, num_workers: int):
     tokenizer = spm.SentencePieceProcessor()
     tokenizer.load('models/tok32000.model')
 
@@ -82,9 +82,8 @@ def create_dataloader(path, batch_size=4, max_length=256,
 
 if __name__ == '__main__':
     dataloader = create_dataloader(
-    'data/ta_dedup.txt', batch_size=1, max_length=256, stride=1, shuffle=False
-    )
-
+    'data/ta_dedup.txt', batch_size = 1, max_length = 256, stride = 1, shuffle = False, drop_last = False, num_workers = multiprocessing.cpu_count())
+    
     data_iter = iter(dataloader)
     first_batch = next(data_iter)
     print(first_batch[0][0].shape, first_batch[0][1].shape)

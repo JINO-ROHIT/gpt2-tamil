@@ -1,5 +1,6 @@
-import torch.nn as nn
 import torch
+import torch.nn as nn
+
 
 class MultiHeadAttention(nn.Module):
     def __init__(self, input_dimension: int , output_dimension: int, num_heads: int = 12, context_length: int = 256, dropout: float = 0, bias: bool = False):
@@ -19,7 +20,7 @@ class MultiHeadAttention(nn.Module):
             "mask",
             torch.triu(torch.ones(context_length, context_length), diagonal = 1)
         )
-    
+
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         bs, seq_length, embedding_dimension = x.shape
 

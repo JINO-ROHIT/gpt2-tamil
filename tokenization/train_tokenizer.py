@@ -1,6 +1,7 @@
+import os
+
 import sentencepiece as spm
 
-import os
 
 options = dict(
   input="data/ta_dedup.txt",
@@ -10,7 +11,7 @@ options = dict(
   vocab_size=32000,
   normalization_rule_name="identity",
   remove_extra_whitespaces=False,
-  max_sentence_length=4192, 
+  max_sentence_length=4192,
   seed_sentencepiece_size=1000000,
   shuffle_input_sentence=True,
   # rare word treatment

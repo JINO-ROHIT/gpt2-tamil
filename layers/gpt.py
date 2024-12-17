@@ -1,8 +1,8 @@
-import torch
 import torch.nn as nn
 from loguru import logger
 
-from layers import FeedForward, MultiHeadAttention, TransformerBlock
+from layers import TransformerBlock
+
 
 class TamilGPT(nn.Module):
     def __init__(self, vocab_size: int, embedding_dimension: int, context_length: int, num_heads: int, scaling_factor: int, num_layers: int, bias: bool, dropout: float, weight_tying: bool = True):
@@ -43,7 +43,7 @@ class TamilGPT(nn.Module):
                 self.__get_parameters_number() / 1e6,
             ),
         )
-    
+
     def __tie_weight(self):
         self.token_embedding.weight = self.language_model_head.weight
 

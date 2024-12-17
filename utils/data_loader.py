@@ -1,8 +1,10 @@
-import torch
-from torch.utils.data import Dataset, DataLoader
-from typing import List
-import sentencepiece as spm
 import multiprocessing
+from typing import List
+
+import sentencepiece as spm
+import torch
+from torch.utils.data import DataLoader, Dataset
+
 
 def get_line_offsets(path: str, chunk_size: int = 2 ** 20) -> List[int]:
     """
@@ -83,7 +85,7 @@ def create_dataloader(path: str, batch_size: int, max_length: int, stride: int, 
 if __name__ == '__main__':
     dataloader = create_dataloader(
     'data/ta_dedup.txt', batch_size = 1, max_length = 256, stride = 1, shuffle = False, drop_last = False, num_workers = multiprocessing.cpu_count())
-    
+
     data_iter = iter(dataloader)
     first_batch = next(data_iter)
     print(first_batch[0][0].shape, first_batch[0][1].shape)

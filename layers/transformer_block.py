@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-from layers import MultiHeadAttention, FeedForward
+from layers import FeedForward, MultiHeadAttention
 
 
 class TransformerBlock(nn.Module):
@@ -20,7 +20,7 @@ class TransformerBlock(nn.Module):
         self.norm1 = nn.LayerNorm(self.embedding_dimension, eps = 1e-5)
         self.norm2 = nn.LayerNorm(self.embedding_dimension, eps = 1e-5)
         self.dropout = nn.Dropout(self.dropout)
-    
+
     def forward(self, x: torch.Tensor) -> torch.Tensor:
 
         shortcut = x

@@ -1,5 +1,6 @@
-import torch.nn as nn
 import torch
+import torch.nn as nn
+
 
 class FeedForward(nn.Module):
     def __init__(self, embedding_dimension: int = 768, scaling_factor: int = 4, bias: bool = False, **kwargs):
@@ -13,7 +14,7 @@ class FeedForward(nn.Module):
             nn.GELU(approximate = 'tanh'),
             nn.Linear(self.scaling_factor * self.embedding_dimension, self.embedding_dimension),
         )
-    
+
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.layers(x)
 

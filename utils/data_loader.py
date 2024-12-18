@@ -1,17 +1,18 @@
 import os
 import random
+from typing import Iterator, Optional, Tuple
+
 import sentencepiece as spm
 import torch
-from torch.utils.data import Dataset, DataLoader, IterableDataset
-from typing import List, Tuple, Iterator, Optional
-import multiprocessing
+from torch.utils.data import DataLoader, IterableDataset
+
 
 class LazyTamilDataset(IterableDataset):
-    def __init__(self, 
-                 file_path: str, 
-                 tokenizer: spm.SentencePieceProcessor, 
-                 max_length: int, 
-                 stride: int, 
+    def __init__(self,
+                 file_path: str,
+                 tokenizer: spm.SentencePieceProcessor,
+                 max_length: int,
+                 stride: int,
                  split: Optional[str] = None,
                  train_ratio: float = 0.8,
                  seed: int = 42,
@@ -36,13 +37,13 @@ class LazyTamilDataset(IterableDataset):
         self.split = split
         self.train_ratio = train_ratio
         self.debug = debug
-        
+
         random.seed(seed)
         torch.manual_seed(seed)
-        
+
         if not os.path.exists(file_path):
             raise FileNotFoundError(f"File not found: {file_path}")
-    
+
     def _generate_chunks(self) -> Iterator[Tuple[torch.Tensor, torch.Tensor]]:
         """
         Generator method to yield tokenized chunks lazily with train/val splitting.
@@ -53,31 +54,31 @@ class LazyTamilDataset(IterableDataset):
                 chunk = f.read(1024 * 1024)  # Read 1MB at a time
                 if not chunk:
                     break
-                
+
                 token_ids = self.tokenizer.encode(chunk)
-                
+
                 # Create overlapping sequences
                 for i in range(0, len(token_ids) - self.max_length, self.stride):
                     if self.split is not None:
                         # Deterministic split based on chunk counter
                         is_train = random.random() < self.train_ratio
-                        
+
                         # Skip chunks that don't match the current split
                         if (self.split == 'train' and not is_train) or \
                            (self.split == 'val' and is_train):
                             chunk_counter += 1
                             continue
-                    
+
                     input_chunk = token_ids[i:i + self.max_length]
                     target_chunk = token_ids[i + 1: i + self.max_length + 1]
-                    
+
                     yield (
-                        torch.tensor(input_chunk, dtype=torch.long), 
+                        torch.tensor(input_chunk, dtype=torch.long),
                         torch.tensor(target_chunk, dtype=torch.long)
                     )
-                    
+
                     chunk_counter += 1
-    
+
     def __iter__(self):
         """
         Make the dataset iterable for lazy loading.
@@ -111,40 +112,40 @@ def create_lazy_split_dataloader(
 
     tokenizer = spm.SentencePieceProcessor()
     tokenizer.load('models/tok32000.model')
-    
+
 
     train_dataset = LazyTamilDataset(
-        file_path = file_path, 
-        tokenizer = tokenizer, 
-        max_length = max_length, 
+        file_path = file_path,
+        tokenizer = tokenizer,
+        max_length = max_length,
         stride = stride,
         split = 'train',
         train_ratio = train_ratio,
         seed = seed
     )
-    
+
     val_dataset = LazyTamilDataset(
-        file_path = file_path, 
-        tokenizer = tokenizer, 
-        max_length = max_length, 
+        file_path = file_path,
+        tokenizer = tokenizer,
+        max_length = max_length,
         stride = stride,
         split = 'val',
         train_ratio = train_ratio,
         seed = seed
     )
-    
+
     train_dataloader = DataLoader(
         train_dataset,
         batch_size = batch_size,
         num_workers = num_workers
     )
-    
+
     val_dataloader = DataLoader(
         val_dataset,
         batch_size = batch_size,
         num_workers = num_workers
     )
-    
+
     return train_dataloader, val_dataloader
 
 # if __name__ == '__main__':
@@ -157,14 +158,14 @@ def create_lazy_split_dataloader(
 #         num_workers = multiprocessing.cpu_count() // 2,
 #         seed = 42
 #     )
-    
+
 
 #     print("Training Data:")
 #     for batch_inputs, batch_targets in train_dataloader:
 #         print(f"Train batch inputs shape: {batch_inputs.shape}")
 #         print(f"Train batch targets shape: {batch_targets.shape}")
 #         break
-    
+
 #     print("\nValidation Data:")
 #     for batch_inputs, batch_targets in val_dataloader:
 #         print(f"Val batch inputs shape: {batch_inputs.shape}")

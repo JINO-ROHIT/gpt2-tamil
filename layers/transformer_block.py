@@ -37,17 +37,17 @@ class TransformerBlock(nn.Module):
 
         return x
 
-if __name__ == '__main__':
-    batch_size = 8
-    context_len = 256
-    embed_dim = 768
-    num_heads = 12
-    bias = False
-    dropout = 0.0
-    scaling_factor = 4
+# if __name__ == '__main__':
+#     batch_size = 8
+#     context_len = 256
+#     embed_dim = 768
+#     num_heads = 12
+#     bias = False
+#     dropout = 0.0
+#     scaling_factor = 4
 
-    embeddings = torch.randn((batch_size, context_len, embed_dim), device = 'cuda' if torch.cuda.is_available else 'cpu')
+#     embeddings = torch.randn((batch_size, context_len, embed_dim), device = 'cuda' if torch.cuda.is_available else 'cpu')
 
-    transformer_block = TransformerBlock(embed_dim, context_len, num_heads, bias, dropout, scaling_factor).to(device = 'cuda' if torch.cuda.is_available else 'cpu')
+#     transformer_block = TransformerBlock(embed_dim, context_len, num_heads, bias, dropout, scaling_factor).to(device = 'cuda' if torch.cuda.is_available else 'cpu')
 
-    print(transformer_block(embeddings), transformer_block(embeddings).shape)
+#     print(transformer_block(embeddings), transformer_block(embeddings).shape)

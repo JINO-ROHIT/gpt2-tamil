@@ -45,12 +45,12 @@ class MultiHeadAttention(nn.Module):
         output = self.proj(output)
         return output
 
-if __name__ == '__main__':
-    batch_size = 8
-    context_len = 256
-    embed_dim = 768
-    num_heads = 12
-    embeddings = torch.randn((batch_size, context_len, embed_dim), device = 'cuda' if torch.cuda.is_available else 'cpu')
+# if __name__ == '__main__':
+#     batch_size = 8
+#     context_len = 256
+#     embed_dim = 768
+#     num_heads = 12
+#     embeddings = torch.randn((batch_size, context_len, embed_dim), device = 'cuda' if torch.cuda.is_available else 'cpu')
 
-    attn_head = MultiHeadAttention(embed_dim, embed_dim, num_heads, context_len).to(device = 'cuda' if torch.cuda.is_available else 'cpu')
-    print(attn_head(embeddings), attn_head(embeddings).shape)
+#     attn_head = MultiHeadAttention(embed_dim, embed_dim, num_heads, context_len).to(device = 'cuda' if torch.cuda.is_available else 'cpu')
+#     print(attn_head(embeddings), attn_head(embeddings).shape)

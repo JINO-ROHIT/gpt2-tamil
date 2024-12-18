@@ -147,26 +147,26 @@ def create_lazy_split_dataloader(
     
     return train_dataloader, val_dataloader
 
-if __name__ == '__main__':
-    train_dataloader, val_dataloader = create_lazy_split_dataloader(
-        file_path = 'data/sample.txt',
-        batch_size = 32,
-        max_length = 256,
-        stride = 1,
-        train_ratio = 0.8,
-        num_workers = multiprocessing.cpu_count() // 2,
-        seed = 42
-    )
+# if __name__ == '__main__':
+#     train_dataloader, val_dataloader = create_lazy_split_dataloader(
+#         file_path = 'data/sample.txt',
+#         batch_size = 32,
+#         max_length = 256,
+#         stride = 1,
+#         train_ratio = 0.8,
+#         num_workers = multiprocessing.cpu_count() // 2,
+#         seed = 42
+#     )
     
 
-    print("Training Data:")
-    for batch_inputs, batch_targets in train_dataloader:
-        print(f"Train batch inputs shape: {batch_inputs.shape}")
-        print(f"Train batch targets shape: {batch_targets.shape}")
-        break
+#     print("Training Data:")
+#     for batch_inputs, batch_targets in train_dataloader:
+#         print(f"Train batch inputs shape: {batch_inputs.shape}")
+#         print(f"Train batch targets shape: {batch_targets.shape}")
+#         break
     
-    print("\nValidation Data:")
-    for batch_inputs, batch_targets in val_dataloader:
-        print(f"Val batch inputs shape: {batch_inputs.shape}")
-        print(f"Val batch targets shape: {batch_targets.shape}")
-        break
+#     print("\nValidation Data:")
+#     for batch_inputs, batch_targets in val_dataloader:
+#         print(f"Val batch inputs shape: {batch_inputs.shape}")
+#         print(f"Val batch targets shape: {batch_targets.shape}")
+#         break

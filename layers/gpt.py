@@ -1,6 +1,6 @@
 import torch.nn as nn
 from loguru import logger
-
+import torch
 from layers import TransformerBlock
 
 
@@ -50,7 +50,42 @@ class TamilGPT(nn.Module):
     def __get_parameters_number(self) -> int:
         params_count = sum(param.numel() for param in self.parameters())
         return params_count
+    
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Forward pass for the TamilGPT model.
+        
+        Args:
+            x (torch.Tensor): Input tensor of token indices with shape (batch_size, context_length)
+        
+        Returns:
+            torch.Tensor: Logits for next token prediction with shape (batch_size, context_length, vocab_size)
+        """
+        batch_size, context_length = x.shape
+        
+        # Ensure input doesn't exceed the model's context length
+        assert context_length <= self.context_length, \
+            f"Input sequence length {context_length} exceeds model's context length {self.context_length}"
+        
+
+        position_indices = torch.arange(context_length, device=x.device)
+        token_emb = self.token_embedding(x)
+    
+        position_emb = self.positional_embedding(position_indices)
+        
+        x = token_emb + position_emb
+        
+        x = self.embedding_dropout(x)
+        
+        for transformer_block in self.transformer_blocks:
+            x = transformer_block(x)
+        
+        x = self.norm(x)
+        
+        logits = self.language_model_head(x)
+        
+        return logits
 
 
-if __name__ == '__main__':
-    gpt = TamilGPT(vocab_size = 32000, embedding_dimension = 768, context_length = 256, num_heads = 12, scaling_factor = 4, num_layers = 12, bias = False, dropout = 0, weight_tying = True)
+# if __name__ == '__main__':
+#     gpt = TamilGPT(vocab_size = 32000, embedding_dimension = 768, context_length = 256, num_heads = 12, scaling_factor = 4, num_layers = 12, bias = False, dropout = 0, weight_tying = True)

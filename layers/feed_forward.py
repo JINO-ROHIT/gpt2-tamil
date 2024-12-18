@@ -19,7 +19,7 @@ class FeedForward(nn.Module):
         return self.layers(x)
 
 
-if __name__ == '__main__':
-    ff = FeedForward()
-    x = torch.randn(10, 10, 768)
-    print(ff(x))
+# if __name__ == '__main__':
+#     ff = FeedForward()
+#     x = torch.randn(10, 10, 768)
+#     print(ff(x))

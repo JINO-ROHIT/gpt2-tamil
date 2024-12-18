@@ -1,6 +1,6 @@
-from .data_loader import create_dataloader
+from .data_loader import create_lazy_split_dataloader
 
 
 __all__ = [
-    'create_dataloader',
+    'create_lazy_split_dataloader',
 ]

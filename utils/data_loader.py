@@ -1,93 +1,109 @@
-import multiprocessing
-from typing import List, Tuple
+import os
+import random
 import sentencepiece as spm
 import torch
-from torch.utils.data import DataLoader, Dataset, random_split
+from torch.utils.data import Dataset, DataLoader, IterableDataset
+from typing import List, Tuple, Iterator, Optional
+import multiprocessing
 
-def get_line_offsets(path: str, chunk_size: int = 2 ** 20) -> List[int]:
-    """
-    Get line offsets from a file for fast random access.
-    """
-    offsets = [0]
-    with open(path, "rb") as file:
-        chunk = file.readlines(chunk_size)
-        while chunk:
-            for line in chunk:
-                offsets.append(offsets[-1] + len(line))
-            print(f"Lines found: {len(offsets)}", end='\r')
-            chunk = file.readlines(chunk_size)
-    return offsets
-
-class TamilDataset(Dataset):
-    def __init__(self, path: str, offset_dict: List[int], tokenizer: spm.SentencePieceProcessor, max_length: int, stride: int, debug: bool = False):
+class LazyTamilDataset(IterableDataset):
+    def __init__(self, 
+                 file_path: str, 
+                 tokenizer: spm.SentencePieceProcessor, 
+                 max_length: int, 
+                 stride: int, 
+                 split: Optional[str] = None,
+                 train_ratio: float = 0.8,
+                 seed: int = 42,
+                 debug: bool = False):
         """
-        PyTorch Dataset for tokenized Tamil text.
-         
+        Lazy loading dataset for large text files with memory-efficient tokenization and train/val split.
+        
         Args:
-            path (str): Path to the text file.
-            offset_dict (List[int]): List of line offsets.
+            file_path (str): Path to the text file.
             tokenizer (spm.SentencePieceProcessor): SentencePiece tokenizer.
             max_length (int): Maximum sequence length.
             stride (int): Stride for overlapping chunks.
+            split (str, optional): 'train' or 'val'. None uses the full dataset.
+            train_ratio (float): Proportion of data to use for training.
+            seed (int): Random seed for reproducibility.
+            debug (bool): Enable debug mode.
         """
-        self.path = path
-        self.offset_dict = offset_dict
+        self.file_path = file_path
         self.tokenizer = tokenizer
         self.max_length = max_length
         self.stride = stride
+        self.split = split
+        self.train_ratio = train_ratio
         self.debug = debug
+        
+        random.seed(seed)
+        torch.manual_seed(seed)
+        
+        if not os.path.exists(file_path):
+            raise FileNotFoundError(f"File not found: {file_path}")
     
-    def __len__(self) -> int:
-        return len(self.offset_dict)
+    def _generate_chunks(self) -> Iterator[Tuple[torch.Tensor, torch.Tensor]]:
+        """
+        Generator method to yield tokenized chunks lazily with train/val splitting.
+        """
+        with open(self.file_path, 'r', encoding='utf-8') as f:
+            chunk_counter = 0
+            while True:
+                chunk = f.read(1024 * 1024)  # Read 1MB at a time
+                if not chunk:
+                    break
+                
+                token_ids = self.tokenizer.encode(chunk)
+                
+                # Create overlapping sequences
+                for i in range(0, len(token_ids) - self.max_length, self.stride):
+                    if self.split is not None:
+                        # Deterministic split based on chunk counter
+                        is_train = random.random() < self.train_ratio
+                        
+                        # Skip chunks that don't match the current split
+                        if (self.split == 'train' and not is_train) or \
+                           (self.split == 'val' and is_train):
+                            chunk_counter += 1
+                            continue
+                    
+                    input_chunk = token_ids[i:i + self.max_length]
+                    target_chunk = token_ids[i + 1: i + self.max_length + 1]
+                    
+                    yield (
+                        torch.tensor(input_chunk, dtype=torch.long), 
+                        torch.tensor(target_chunk, dtype=torch.long)
+                    )
+                    
+                    chunk_counter += 1
     
-    def __getitem__(self, idx):
+    def __iter__(self):
         """
-        Retrieves tokenized input and target sequences for a given index.
+        Make the dataset iterable for lazy loading.
         """
-        offset = self.offset_dict[idx]
-        
-        with open(self.path, 'r', encoding='utf-8') as f:
-            f.seek(offset)
-            line = f.readline().strip()
-        
-        token_ids = self.tokenizer.encode(line)
-        
-        input_chunks = []
-        target_chunks = []
-        
-        for i in range(0, max(0, len(token_ids) - self.max_length), self.stride):
-            input_chunk = token_ids[i:i + self.max_length]
-            target_chunk = token_ids[i + 1: i + self.max_length + 1]
-            
-            input_chunks.append(torch.tensor(input_chunk, dtype=torch.long))
-            target_chunks.append(torch.tensor(target_chunk, dtype=torch.long))
-        
-        if self.debug:
-            return line, input_chunks, target_chunks
-        return input_chunks, target_chunks
+        return self._generate_chunks()
 
-def create_dataloader(
-    path: str, 
-    batch_size: int, 
-    max_length: int, 
-    stride: int, 
-    shuffle: bool, 
-    drop_last: bool, 
-    num_workers: int,
-    train_split: float = 0.75
+def create_lazy_split_dataloader(
+    file_path: str,
+    batch_size: int,
+    max_length: int,
+    stride: int,
+    train_ratio: float = 0.8,
+    num_workers: int = 0,
+    seed: int = 42
 ) -> Tuple[DataLoader, DataLoader]:
     """
-    Create train and validation dataloaders with a specified split.
+    Create lazy loading train and validation DataLoaders with a split.
     
     Args:
-        path (str): Path to the text file.
+        file_path (str): Path to the text file.
         batch_size (int): Batch size for dataloaders.
         max_length (int): Maximum sequence length.
         stride (int): Stride for overlapping chunks.
-        shuffle (bool): Whether to shuffle the data.
-        drop_last (bool): Whether to drop the last incomplete batch.
+        train_ratio (float): Proportion of data to use for training.
         num_workers (int): Number of worker processes for data loading.
-        train_split (float, optional): Proportion of data to use for training. Defaults to 0.75.
+        seed (int): Random seed for reproducibility.
     
     Returns:
         Tuple of train and validation DataLoaders.
@@ -96,56 +112,61 @@ def create_dataloader(
     tokenizer = spm.SentencePieceProcessor()
     tokenizer.load('models/tok32000.model')
     
-    offsets = get_line_offsets(path)
+
+    train_dataset = LazyTamilDataset(
+        file_path = file_path, 
+        tokenizer = tokenizer, 
+        max_length = max_length, 
+        stride = stride,
+        split = 'train',
+        train_ratio = train_ratio,
+        seed = seed
+    )
     
-    dataset = TamilDataset(path, offsets, tokenizer, max_length, stride, debug=False)
-    
-    train_size = int(len(dataset) * train_split)
-    val_size = len(dataset) - train_size
-    
-    train_dataset, val_dataset = random_split(dataset, [train_size, val_size])
+    val_dataset = LazyTamilDataset(
+        file_path = file_path, 
+        tokenizer = tokenizer, 
+        max_length = max_length, 
+        stride = stride,
+        split = 'val',
+        train_ratio = train_ratio,
+        seed = seed
+    )
     
     train_dataloader = DataLoader(
-        train_dataset, 
-        batch_size=batch_size, 
-        shuffle=shuffle, 
-        drop_last=drop_last, 
-        num_workers=num_workers
+        train_dataset,
+        batch_size = batch_size,
+        num_workers = num_workers
     )
     
     val_dataloader = DataLoader(
-        val_dataset, 
-        batch_size=batch_size, 
-        shuffle=False, 
-        drop_last=drop_last, 
-        num_workers=num_workers
+        val_dataset,
+        batch_size = batch_size,
+        num_workers = num_workers
     )
     
     return train_dataloader, val_dataloader
 
 if __name__ == '__main__':
-    train_dataloader, val_dataloader = create_dataloader(
-        'data/ta_dedup.txt', 
-        batch_size=1, 
-        max_length=256, 
-        stride=1, 
-        shuffle=True, 
-        drop_last=False, 
-        num_workers=multiprocessing.cpu_count() // 2
+    train_dataloader, val_dataloader = create_lazy_split_dataloader(
+        file_path = 'data/sample.txt',
+        batch_size = 32,
+        max_length = 256,
+        stride = 1,
+        train_ratio = 0.8,
+        num_workers = multiprocessing.cpu_count() // 2,
+        seed = 42
     )
     
-    train_iter = iter(train_dataloader)
-    val_iter = iter(val_dataloader)
+
+    print("Training Data:")
+    for batch_inputs, batch_targets in train_dataloader:
+        print(f"Train batch inputs shape: {batch_inputs.shape}")
+        print(f"Train batch targets shape: {batch_targets.shape}")
+        break
     
-    first_train_batch = next(train_iter)
-    first_val_batch = next(val_iter)
-
-    # print("Train batch first chunk shapes:", first_train_batch[0][0].shape, first_train_batch[0][1].shape)
-    # print("Validation batch first chunk shapes:", first_val_batch[0][0].shape, first_val_batch[0][1].shape)
-
-    # TODO: need to fix this empty results in some cases
-
-    print(first_train_batch)
-    
-    print(f"Train dataset size: {len(train_dataloader.dataset)}")
-    print(f"Validation dataset size: {len(val_dataloader.dataset)}")
+    print("\nValidation Data:")
+    for batch_inputs, batch_targets in val_dataloader:
+        print(f"Val batch inputs shape: {batch_inputs.shape}")
+        print(f"Val batch targets shape: {batch_targets.shape}")
+        break

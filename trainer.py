@@ -12,6 +12,7 @@ from tqdm.auto import tqdm
 from layers import TamilGPT
 from utils import create_lazy_split_dataloader
 
+import wandb
 
 class VerboseTrainer:
     def __init__(self,
@@ -23,13 +24,28 @@ class VerboseTrainer:
                  epochs: int,
                  device: str = 'cuda' if torch.cuda.is_available() else 'cpu',
                  checkpoint_dir: str = 'model_checkpoints',
-                 model_name: str = 'best_model'):
+                 model_name: str = 'best_model',
+                 project_name: str = 'tamilgpt',
+                 run_name: str = 'sample_tamil'):
         """
         Initialize the Trainer with enhanced verbosity and detailed logging.
         """
         # Create checkpoint directory if it doesn't exist
         self.checkpoint_dir = checkpoint_dir
         os.makedirs(checkpoint_dir, exist_ok=True)
+
+        self.run = wandb.init(
+            project=project_name,
+            name=run_name,
+            config={
+                "model_type": type(model).__name__,
+                "optimizer": type(optimizer).__name__,
+                "learning_rate": optimizer.param_groups[0]['lr'],
+                "epochs": epochs,
+                "batch_size": train_loader.batch_size,
+                "device": device,
+            }
+        )
 
         self.model = model.to(device)
         self.train_loader = train_loader
@@ -49,6 +65,8 @@ class VerboseTrainer:
             'validation_losses': [],
             'training_times': []
         }
+
+        wandb.watch(self.model, log="all", log_freq=100)
 
         self._print_config()
 
@@ -72,23 +90,7 @@ class VerboseTrainer:
         """
         logits = self.model(inputs)
         loss = self.loss(logits.flatten(0, 1), targets.flatten())
-
-        if self.training_metrics['total_steps'] % 50 == 0:
-            total_grad_norm = self._compute_gradient_norm()
-            print(f"Step {self.training_metrics['total_steps']} - Gradient Norm: {total_grad_norm}")
-
         return loss
-
-    def _compute_gradient_norm(self):
-        """
-        Compute the total gradient norm across all parameters.
-        """
-        total_norm = 0
-        for p in self.model.parameters():
-            if p.grad is not None:
-                param_norm = p.grad.detach().data.norm(2)
-                total_norm += param_norm.item() ** 2
-        return total_norm ** 0.5
 
     def _save_checkpoint(self, epoch: int, val_loss: float):
         """
@@ -110,6 +112,14 @@ class VerboseTrainer:
                 'loss': val_loss,
                 'training_metrics': self.training_metrics
             }, checkpoint_path)
+
+            artifact = wandb.Artifact(
+                name=f'model-checkpoint-{epoch}',
+                type='model',
+                description=f'Model checkpoint from epoch {epoch+1} with validation loss {val_loss:.4f}'
+            )
+            artifact.add_file(checkpoint_path)
+            wandb.log_artifact(artifact)
 
             if self.best_model_path and os.path.exists(self.best_model_path):
                 os.remove(self.best_model_path)
@@ -150,6 +160,11 @@ class VerboseTrainer:
 
                 self.training_metrics['total_steps'] += 1
 
+                wandb.log({
+                    "batch_loss": batch_loss,
+                    "avg_batch_loss": np.mean(batch_losses)
+                }, step=self.training_metrics['total_steps'])
+
                 # Update progress bar with current metrics
                 progress_bar.set_postfix({
                     'Batch Loss': f'{batch_loss:.4f}',
@@ -166,8 +181,15 @@ class VerboseTrainer:
             self.training_metrics['epoch_losses'].append(train_loss)
             self.training_metrics['validation_losses'].append(validation_loss)
 
+            wandb.log({
+                "epoch": epoch + 1,
+                "train_loss": train_loss,
+                "validation_loss": validation_loss,
+                "epoch_duration": epoch_duration
+            }, step=self.training_metrics['total_steps'])
+
             print("\n📊 Epoch Summary:")
-            print(f"Total Epoch Loss: {epoch_loss:.4f}")
+            # print(f"Total Epoch Loss: {epoch_loss:.4f}")
             #print(f"Average Batch Loss: {epoch_loss/len(self.train_loader):.4f}")
             print(f"Training Loss: {train_loss:.4f}")
             print(f"Validation Loss: {validation_loss:.4f}")
@@ -214,16 +236,26 @@ class VerboseTrainer:
         """
         self._train()
 
+
         final_train_loss, final_val_loss = self._evaluate()
         print("\n🔍 Final Evaluation:")
         print(f"Final Train Loss: {final_train_loss:.4f}")
         print(f"Final Validation Loss: {final_val_loss:.4f}")
+
+        wandb.log({
+            "final_train_loss": final_train_loss,
+            "final_validation_loss": final_val_loss,
+            "best_validation_loss": self.best_val_loss,
+            "total_training_time": sum(self.training_metrics['training_times'])
+        })
 
         self._print_training_report()
 
         if self.best_model_path:
             best_checkpoint = torch.load(self.best_model_path)
             self.model.load_state_dict(best_checkpoint['model_state_dict'])
+        
+        wandb.finish()
 
         return self.model
 
@@ -251,9 +283,9 @@ if __name__ == '__main__':
         vocab_size=32000,
         embedding_dimension=768,
         context_length=256,
-        num_heads=12,
-        scaling_factor=4,
-        num_layers=12,
+        num_heads=6,
+        scaling_factor=2,
+        num_layers=6,
         bias=False,
         dropout=0,
         weight_tying=True

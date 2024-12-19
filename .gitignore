@@ -4,5 +4,6 @@ models/
 .ruff_cache/
 __pycache__/
 checkpoints/
+wandb/
 
 play.ipynb

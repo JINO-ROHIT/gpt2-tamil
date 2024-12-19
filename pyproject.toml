@@ -10,6 +10,7 @@ python = "^3.12"
 sentencepiece = "^0.2.0"
 loguru = "^0.7.3"
 tqdm = "^4.67.1"
+wandb = "^0.19.1"
 
 
 [tool.poetry.group.dev.dependencies]

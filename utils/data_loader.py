@@ -57,13 +57,11 @@ class LazyTamilDataset(IterableDataset):
 
                 token_ids = self.tokenizer.encode(chunk)
 
-                # Create overlapping sequences
                 for i in range(0, len(token_ids) - self.max_length, self.stride):
                     if self.split is not None:
                         # Deterministic split based on chunk counter
                         is_train = random.random() < self.train_ratio
 
-                        # Skip chunks that don't match the current split
                         if (self.split == 'train' and not is_train) or \
                            (self.split == 'val' and is_train):
                             chunk_counter += 1

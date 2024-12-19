@@ -236,16 +236,7 @@ class VerboseTrainer:
         """
         self._train()
 
-
-        final_train_loss, final_val_loss = self._evaluate()
-        print("\n🔍 Final Evaluation:")
-        print(f"Final Train Loss: {final_train_loss:.4f}")
-        print(f"Final Validation Loss: {final_val_loss:.4f}")
-
         wandb.log({
-            "final_train_loss": final_train_loss,
-            "final_validation_loss": final_val_loss,
-            "best_validation_loss": self.best_val_loss,
             "total_training_time": sum(self.training_metrics['training_times'])
         })
 
@@ -283,9 +274,9 @@ if __name__ == '__main__':
         vocab_size=32000,
         embedding_dimension=768,
         context_length=256,
-        num_heads=6,
+        num_heads=2,
         scaling_factor=2,
-        num_layers=6,
+        num_layers=2,
         bias=False,
         dropout=0,
         weight_tying=True
@@ -303,7 +294,7 @@ if __name__ == '__main__':
 
     loss_function = nn.CrossEntropyLoss()
 
-    optimizer = optim.Adam(model.parameters(), lr=1e-4)
+    optimizer = optim.AdamW(model.parameters(), lr = 0.0004, weight_decay = 0.1)
 
     trainer = VerboseTrainer(
         model=model,
@@ -311,10 +302,9 @@ if __name__ == '__main__':
         test_loader=val_dataloader,
         loss=loss_function,
         optimizer=optimizer,
-        epochs=5,
+        epochs=10,
         checkpoint_dir='./checkpoints',
         model_name='tamilgpt'
     )
 
-    # Train and get best model
     best_model = trainer.train()

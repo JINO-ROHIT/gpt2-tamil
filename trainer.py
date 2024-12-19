@@ -284,7 +284,7 @@ if __name__ == '__main__':
 
     train_dataloader, val_dataloader = create_lazy_split_dataloader(
         file_path='data/sample_tamil.txt',
-        batch_size=32,
+        batch_size=64,
         max_length=256,
         stride=1,
         train_ratio=0.8,

@@ -10,6 +10,7 @@ A learning repository to understand and run series of experiments on the GPT arc
 ```
 gpt2-tamil/
 ├── trainer.py
+├── inference.py
 ├── layers/
 │   ├── attention.py
 │   ├── feed_forward.py
@@ -20,6 +21,22 @@ gpt2-tamil/
 ├── utils/
 │   └── data_loader.py
 ```
+
+
+## Currently supports
+
+1. A lazy data loader to avoid all data into RAM during dataset creation.
+2. Flexible GPT-2 architecture blocks.
+3. A sentencepiece tokenizer with bpe.
+4. Flexible training loop with checkpoint saving and resuming.
+5. Wandb logging.
+
+## More to come
+
+- [] kv-cache
+- [] ROPE encoding
+- [] sliding attention
+- [] More sampling methods
 
 ## How to run?
 
@@ -41,3 +58,8 @@ python train_tokenizer.py
 python trainer.py
 ```
 
+4. Run the inference class
+
+```
+python inference.py
+```

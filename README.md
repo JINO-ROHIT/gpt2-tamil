@@ -25,18 +25,18 @@ gpt2-tamil/
 
 ## Currently supports
 
-1. A lazy data loader to avoid all data into RAM during dataset creation.
-2. Flexible GPT-2 architecture blocks.
-3. A sentencepiece tokenizer with bpe.
-4. Flexible training loop with checkpoint saving and resuming.
-5. Wandb logging.
+- ✅ A lazy data loader to avoid all data into RAM during dataset creation.
+- ✅ Flexible GPT-2 architecture blocks.
+- ✅ A sentencepiece tokenizer with bpe.
+- ✅ Flexible training loop with checkpoint saving and resuming.
+- ✅ Wandb logging.
 
 ## More to come
 
-- [] kv-cache
-- [] ROPE encoding
-- [] sliding attention
-- [] More sampling methods
+- ⏳ kv-cache
+- ⏳ ROPE encoding
+- ⏳ sliding attention
+- ⏳ More sampling methods
 
 ## How to run?
 

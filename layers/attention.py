@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 
+from typing import Optional
 
 class MultiHeadAttention(nn.Module):
     def __init__(self, input_dimension: int , output_dimension: int, num_heads: int = 12, context_length: int = 256, dropout: float = 0, bias: bool = False):
@@ -14,6 +15,7 @@ class MultiHeadAttention(nn.Module):
 
         self.qkv = nn.Linear(input_dimension, 3 * output_dimension, bias = bias)
         self.proj = nn.Linear(output_dimension, output_dimension)
+
         self.dropout = nn.Dropout(dropout)
 
         self.register_buffer(
@@ -21,7 +23,7 @@ class MultiHeadAttention(nn.Module):
             torch.triu(torch.ones(context_length, context_length), diagonal = 1)
         )
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
+    def forward(self, x: torch.Tensor, kv_cache: Optional[torch.Tensor] = None) -> torch.Tensor:
         bs, seq_length, embedding_dimension = x.shape
 
         qkv = self.qkv(x) # (bs, seq_len, embed_dim) --> (bs, seq_len, 3 * embed_dim)
@@ -30,6 +32,11 @@ class MultiHeadAttention(nn.Module):
         qkv = qkv.permute(2, 0, 3, 1, 4)
 
         Q, K, V = qkv.unbind(0)
+
+        if not kv_cache:
+            cached_key, cached_value = kv_cache.unbind(0)
+            K = torch.cat((cached_key, K), dim = -2)
+            V = torch.cat((cached_value, V), dim = -2)
 
         attn_scores = Q @ K.transpose(-2, -1)
         attn_scores = attn_scores.masked_fill(
@@ -43,7 +50,10 @@ class MultiHeadAttention(nn.Module):
         output = output.transpose(1, 2)
         output = output.contiguous().view(bs, seq_length, embedding_dimension)
         output = self.proj(output)
-        return output
+
+        return ( output,  None if self.kv_cache is None else torch.stack((K, V)) )
+
+# TODO - test the kv cache once
 
 # if __name__ == '__main__':
 #     batch_size = 8

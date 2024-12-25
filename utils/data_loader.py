@@ -146,6 +146,56 @@ def create_lazy_split_dataloader(
 
     return train_dataloader, val_dataloader
 
+
+import multiprocessing
+from typing import List, Tuple
+import sentencepiece as spm
+import torch
+from torch.utils.data import DataLoader, Dataset, random_split
+from tqdm.auto import tqdm
+
+class TamilDataset(Dataset):
+    def __init__(self, path: str, tokenizer: spm.SentencePieceProcessor, max_length: int, stride: int, debug: bool = False):
+        """
+        PyTorch Dataset for tokenized Tamil text.
+         
+        Args:
+            path (str): Path to the text file.
+            tokenizer (spm.SentencePieceProcessor): SentencePiece tokenizer.
+            max_length (int): Maximum sequence length.
+            stride (int): Stride for overlapping chunks.
+        """
+        self.tokenizer = tokenizer
+        self.max_length = max_length
+        self.stride = stride
+        self.debug = debug
+        self.input_ids = []
+        self.target_ids = []
+        
+        # Process text line by line
+        with open(path, 'r', encoding='utf-8') as f:
+            for idx, line in tqdm(enumerate(f)):
+                token_ids = self.tokenizer.encode(line.strip())
+                for i in range(0, len(token_ids) - max_length, stride):
+                    input_chunk = token_ids[i:i + max_length]
+                    target_chunk = token_ids[i + 1: i + max_length + 1]
+                    self.input_ids.append(torch.tensor(input_chunk))
+                    self.target_ids.append(torch.tensor(target_chunk))
+                del token_ids
+                del line
+    
+    def __len__(self) -> int:
+        return len(self.input_ids)
+    
+    def __getitem__(self, idx):
+        return self.input_ids[idx], self.target_ids[idx]
+
+
+# tokenizer = spm.SentencePieceProcessor()
+# tokenizer.load('models/tok32000.model')
+
+# dataset = TamilDataset('data/ta_dedup.txt', tokenizer, 128, 1, debug=True)
+
 # if __name__ == '__main__':
 #     train_dataloader, val_dataloader = create_lazy_split_dataloader(
 #         file_path = 'data/sample.txt',

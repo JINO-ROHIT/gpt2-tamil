@@ -51,7 +51,7 @@ class MultiHeadAttention(nn.Module):
         output = output.contiguous().view(bs, seq_length, embedding_dimension)
         output = self.proj(output)
 
-        return ( output,  None if self.kv_cache is None else torch.stack((K, V)) )
+        return ( output,  None if kv_cache is None else torch.stack((K, V)) )
 
 # TODO - test the kv cache once
 
